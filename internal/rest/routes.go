@@ -1,8 +1,9 @@
 package rest
 
 import (
+	"log/slog"
+
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/swiftahul20/expense-tracker/internal/auth"
 	"github.com/swiftahul20/expense-tracker/internal/ratelimit"
 
@@ -11,9 +12,9 @@ import (
 	_ "github.com/swiftahul20/expense-tracker/docs"
 )
 
-func NewRouter(h *Handler, authHandler *auth.Handler, jwtManager *auth.JWTManager, loginLimiter *ratelimit.Limiter, healthHandler *HealthHandler) *chi.Mux {
+func NewRouter(h *Handler, authHandler *auth.Handler, jwtManager *auth.JWTManager, loginLimiter *ratelimit.Limiter, healthHandler *HealthHandler, log *slog.Logger) *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(StructuredLogger(log))
 	r.Get("/health", healthHandler.Check)
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 

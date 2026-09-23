@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -12,6 +10,7 @@ import (
 	"github.com/swiftahul20/expense-tracker/internal/auth"
 	"github.com/swiftahul20/expense-tracker/internal/config"
 	"github.com/swiftahul20/expense-tracker/internal/expense"
+	"github.com/swiftahul20/expense-tracker/internal/logger"
 	"github.com/swiftahul20/expense-tracker/internal/ratelimit"
 	"github.com/swiftahul20/expense-tracker/internal/rest"
 	"github.com/swiftahul20/expense-tracker/internal/user"
@@ -26,20 +25,22 @@ import (
 // @in header
 // @name Authorization
 func main() {
+	log := logger.New()
+
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to load config:", err)
+		log.Error("failed to load config:", "error", err)
 		os.Exit(1)
 	}
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to connect to database:", err)
+		log.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 	if err := pool.Ping(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to ping database:", err)
+		log.Error("failed to ping database:", "error", err)
 		os.Exit(1)
 	}
 
@@ -52,8 +53,11 @@ func main() {
 
 	loginLimiter := ratelimit.New(5, 15*time.Minute)
 	healthHandler := rest.NewHealthHandler(pool)
-	router := rest.NewRouter(expenseHandler, authHandler, jwtManager, loginLimiter, healthHandler)
+	router := rest.NewRouter(expenseHandler, authHandler, jwtManager, loginLimiter, healthHandler, log)
 
-	log.Println("REST server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Info("REST server listening on :8080")
+	if err := http.ListenAndServe(":8080", router); err != nil {
+		log.Error("server failed", "error", err)
+		os.Exit(1)
+	}
 }
