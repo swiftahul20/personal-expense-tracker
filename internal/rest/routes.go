@@ -1,0 +1,41 @@
+package rest
+
+import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/swiftahul20/expense-tracker/internal/auth"
+	"github.com/swiftahul20/expense-tracker/internal/ratelimit"
+)
+
+func NewRouter(h *Handler, authHandler *auth.Handler, jwtManager *auth.JWTManager, loginLimiter *ratelimit.Limiter) *chi.Mux {
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/register", authHandler.Register)
+		r.With(loginLimiter.Middleware).Post("/login", authHandler.Login)
+		r.Post("/refresh", authHandler.Refresh)
+		r.Post("/logout", authHandler.Logout)
+		r.With(jwtManager.Middleware).Get("/me", authHandler.Me)
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(jwtManager.Middleware)
+
+		r.Route("/expenses", func(r chi.Router) {
+			r.Get("/", h.ListExpenses)
+			r.Post("/", h.CreateExpense)
+			r.Get("/{id}", h.GetExpense)
+			r.Put("/{id}", h.UpdateExpense)
+			r.Delete("/{id}", h.DeleteExpense)
+		})
+
+		r.Route("/summary", func(r chi.Router) {
+			r.Get("/category", h.SummaryByCategory)
+			r.Get("/day", h.SummaryByDay)
+			r.Get("/month", h.SummaryByMonth)
+		})
+	})
+
+	return r
+}
