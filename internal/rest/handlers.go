@@ -1,11 +1,14 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/swiftahul20/expense-tracker/internal/auth"
 	"github.com/swiftahul20/expense-tracker/internal/expense"
 	"github.com/swiftahul20/expense-tracker/internal/report"
@@ -31,8 +34,23 @@ type dashboardResponse struct {
 	ByDay      []report.DayTotal      `json:"by_day"`
 }
 
+type HealthHandler struct {
+	pool *pgxpool.Pool
+}
+
 // =================================
 
+// ListExpenses godoc
+// @Description  Returns a paginated list of the authenticated user's expenses
+// @Tags         Expenses
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page      query    int    false  "Page number (default 1)"
+// @Param        limit     query    int    false  "Items per page (default 20, max 100)"
+// @Param        category  query    string false  "Filter by category"
+// @Success      200 {object} paginatedExpensesResponse
+// @Failure      401 {object} map[string]string
+// @Router       /expenses [get]
 func (h *Handler) ListExpenses(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 
@@ -87,6 +105,14 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
 
+// @Tags         Expenses
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "Expense ID"
+// @Success      200 {object} expense.Expense
+// @Failure      401 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Router       /expenses/{id} [get]
 func (h *Handler) GetExpense(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 
@@ -105,6 +131,15 @@ func (h *Handler) GetExpense(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, e)
 }
 
+// @Description  Creates an expense for the authenticated user
+// @Tags         Expenses
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        expense body expense.Expense true "Expense to create"
+// @Success      201 {object} expense.Expense
+// @Failure      400 {object} map[string]string
+// @Router       /expenses [post]
 func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 
@@ -123,6 +158,17 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
+// @Description  Partially updates an expense — only provided fields are changed
+// @Tags         Expenses
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "Expense ID"
+// @Param        updates body expense.ExpenseUpdate true "Fields to update"
+// @Success      200 {object} expense.Expense
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Router       /expenses/{id} [put]
 func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 
@@ -157,6 +203,14 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// @Description  Deletes an expense belonging to the authenticated user
+// @Tags         Expenses
+// @Security     BearerAuth
+// @Param        id path int true "Expense ID"
+// @Success      204 "No Content"
+// @Failure      401 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Router       /expenses/{id} [delete]
 func (h *Handler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 
@@ -174,6 +228,13 @@ func (h *Handler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// @Description  Returns totals grouped by category, including each group's expenses
+// @Tags         Summary
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array} report.CategoryTotal
+// @Failure      401 {object} map[string]string
+// @Router       /summary/category [get]
 func (h *Handler) SummaryByCategory(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 	expenses, err := h.store.ListAll(userID)
@@ -184,6 +245,13 @@ func (h *Handler) SummaryByCategory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, report.ByCategory(expenses))
 }
 
+// @Description  Returns totals grouped by day, including each group's expenses
+// @Tags         Summary
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array} report.DayTotal
+// @Failure      401 {object} map[string]string
+// @Router       /summary/day [get]
 func (h *Handler) SummaryByDay(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 	expenses, err := h.store.ListAll(userID)
@@ -194,6 +262,13 @@ func (h *Handler) SummaryByDay(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, report.ByDay(expenses))
 }
 
+// @Description  Returns totals grouped by month, including each group's expenses
+// @Tags         Summary
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array} report.MonthTotal
+// @Failure      401 {object} map[string]string
+// @Router       /summary/month [get]
 func (h *Handler) SummaryByMonth(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 	expenses, err := h.store.ListAll(userID)
@@ -204,6 +279,13 @@ func (h *Handler) SummaryByMonth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, report.ByMonth(expenses))
 }
 
+// @Description  Returns expenses plus all three summaries combined in a single response
+// @Tags         Summary
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} dashboardResponse
+// @Failure      401 {object} map[string]string
+// @Router       /dashboard [get]
 func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	userID, _ := auth.UserIDFromContext(r.Context())
 
@@ -218,5 +300,28 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		ByCategory: report.ByCategory(expenses),
 		ByMonth:    report.ByMonth(expenses),
 		ByDay:      report.ByDay(expenses),
+	})
+}
+
+// api check
+func NewHealthHandler(pool *pgxpool.Pool) *HealthHandler {
+	return &HealthHandler{pool: pool}
+}
+
+func (h *HealthHandler) Check(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	if err := h.pool.Ping(ctx); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"status":   "unhealthy",
+			"database": "unreachable",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status":   "healthy",
+		"database": "connected",
 	})
 }

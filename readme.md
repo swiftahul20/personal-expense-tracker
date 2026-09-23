@@ -6,7 +6,8 @@ A REST API for tracking personal expenses, built in Go while learning the langua
 
 - **Full CRUD** for expenses (amount, category, sub-category, description, date)
 - **Pagination** on the expense list (page/limit, capped at 100 per page, total count included)
-- **Category, monthly, and daily summaries** — each includes both totals and the underlying list of expenses for that group
+- **Category, monthly, and daily summaries** — each includes both totals and the underlying list of expenses for that
+- **Swagger/OpenAPI documentation** — interactive API explorer at `/swagger/index.html`, generated via `swaggo/swag` from code annotationsgroup
 - **Combined dashboard endpoint** — expenses + all three summaries in a single response
 - **JWT authentication** — short-lived access tokens + long-lived refresh tokens, rotated on every use
 - **Logout** — revokes a refresh token server-side
@@ -24,6 +25,7 @@ A REST API for tracking personal expenses, built in Go while learning the langua
 - **Auth:** [golang-jwt](https://github.com/golang-jwt/jwt) + bcrypt password hashing
 - **Config:** environment variables via `.env` ([godotenv](https://github.com/joho/godotenv))
 - **Containerization:** Docker, Docker Compose (multi-stage build)
+- **API Docs:** [swaggo/swag](https://github.com/swaggo/swag) (OpenAPI/Swagger generation)
 
 ## Architecture
 
@@ -103,6 +105,19 @@ internal/
    ```
 
 The API is now available at `http://localhost:8080`.
+
+### API Documentation
+
+Once the server is running, interactive Swagger docs are available at:
+http://localhost:8080/swagger/index.html
+
+For protected endpoints, click **Authorize** and enter your access token in the format `Bearer <token>`.
+
+To regenerate the docs after adding or changing annotations:
+
+```bash
+swag init -g cmd/rest-server/main.go
+```
 
 ### Stopping
 

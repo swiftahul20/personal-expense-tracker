@@ -5,11 +5,17 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/swiftahul20/expense-tracker/internal/auth"
 	"github.com/swiftahul20/expense-tracker/internal/ratelimit"
+
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	_ "github.com/swiftahul20/expense-tracker/docs"
 )
 
-func NewRouter(h *Handler, authHandler *auth.Handler, jwtManager *auth.JWTManager, loginLimiter *ratelimit.Limiter) *chi.Mux {
+func NewRouter(h *Handler, authHandler *auth.Handler, jwtManager *auth.JWTManager, loginLimiter *ratelimit.Limiter, healthHandler *HealthHandler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Get("/health", healthHandler.Check)
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
@@ -35,6 +41,8 @@ func NewRouter(h *Handler, authHandler *auth.Handler, jwtManager *auth.JWTManage
 			r.Get("/day", h.SummaryByDay)
 			r.Get("/month", h.SummaryByMonth)
 		})
+
+		r.Get("/dashboard", h.Dashboard)
 	})
 
 	return r

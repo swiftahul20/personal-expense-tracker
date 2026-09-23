@@ -71,6 +71,18 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, authResponse{AccessToken: token, User: created, RefreshToken: plainRefresh})
 }
 
+// Login godoc
+// @Summary      Log in
+// @Description  Authenticates a user and returns an access token and refresh token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials body registerRequest true "Login credentials"
+// @Success      200 {object} authResponse
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Failure      429 {object} map[string]string
+// @Router       /auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -17,6 +17,14 @@ import (
 	"github.com/swiftahul20/expense-tracker/internal/user"
 )
 
+// @title           Expense Tracker API
+// @version         1.0
+// @description     REST API for tracking personal expenses
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -43,7 +51,8 @@ func main() {
 	authHandler := auth.NewHandler(userStore, jwtManager, cfg.RefreshTTL)
 
 	loginLimiter := ratelimit.New(5, 15*time.Minute)
-	router := rest.NewRouter(expenseHandler, authHandler, jwtManager, loginLimiter)
+	healthHandler := rest.NewHealthHandler(pool)
+	router := rest.NewRouter(expenseHandler, authHandler, jwtManager, loginLimiter, healthHandler)
 
 	log.Println("REST server listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", router))

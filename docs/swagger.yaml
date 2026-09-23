@@ -1,0 +1,417 @@
+basePath: /
+definitions:
+  auth.authResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/user.User'
+    type: object
+  auth.registerRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  expense.Expense:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      sub_category:
+        type: string
+    type: object
+  expense.ExpenseUpdate:
+    properties:
+      amount:
+        format: float64
+        type: number
+      category:
+        type: string
+      description:
+        type: string
+    type: object
+  report.CategoryTotal:
+    properties:
+      category:
+        type: string
+      expenses:
+        items:
+          $ref: '#/definitions/expense.Expense'
+        type: array
+      total:
+        type: number
+    type: object
+  report.DayTotal:
+    properties:
+      day:
+        type: string
+      expenses:
+        items:
+          $ref: '#/definitions/expense.Expense'
+        type: array
+      total:
+        type: number
+    type: object
+  report.MonthTotal:
+    properties:
+      expenses:
+        items:
+          $ref: '#/definitions/expense.Expense'
+        type: array
+      month:
+        type: string
+      total:
+        type: number
+    type: object
+  rest.dashboardResponse:
+    properties:
+      by_category:
+        items:
+          $ref: '#/definitions/report.CategoryTotal'
+        type: array
+      by_day:
+        items:
+          $ref: '#/definitions/report.DayTotal'
+        type: array
+      by_month:
+        items:
+          $ref: '#/definitions/report.MonthTotal'
+        type: array
+      expenses:
+        items:
+          $ref: '#/definitions/expense.Expense'
+        type: array
+    type: object
+  rest.paginatedExpensesResponse:
+    properties:
+      expenses:
+        items:
+          $ref: '#/definitions/expense.Expense'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  user.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: REST API for tracking personal expenses
+  title: Expense Tracker API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns an access token and refresh token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/auth.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.authResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Log in
+      tags:
+      - auth
+  /dashboard:
+    get:
+      description: Returns expenses plus all three summaries combined in a single
+        response
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.dashboardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Summary
+  /expenses:
+    get:
+      description: Returns a paginated list of the authenticated user's expenses
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.paginatedExpensesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Expenses
+    post:
+      consumes:
+      - application/json
+      description: Creates an expense for the authenticated user
+      parameters:
+      - description: Expense to create
+        in: body
+        name: expense
+        required: true
+        schema:
+          $ref: '#/definitions/expense.Expense'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/expense.Expense'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Expenses
+  /expenses/{id}:
+    delete:
+      description: Deletes an expense belonging to the authenticated user
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Expenses
+    get:
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/expense.Expense'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Expenses
+    put:
+      consumes:
+      - application/json
+      description: Partially updates an expense — only provided fields are changed
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          $ref: '#/definitions/expense.ExpenseUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/expense.Expense'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Expenses
+  /summary/category:
+    get:
+      description: Returns totals grouped by category, including each group's expenses
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/report.CategoryTotal'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Summary
+  /summary/day:
+    get:
+      description: Returns totals grouped by day, including each group's expenses
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/report.DayTotal'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Summary
+  /summary/month:
+    get:
+      description: Returns totals grouped by month, including each group's expenses
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/report.MonthTotal'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Summary
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
