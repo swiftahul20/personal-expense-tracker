@@ -173,13 +173,6 @@ curl -X POST http://localhost:8080/expenses \
   -d '{"amount": 50000, "category": "food", "sub_category": "dine-in", "description": "Lunch", "date": "2026-09-21T00:00:00Z"}'
 ```
 
-## Roadmap
-
-- [ ] Next.js frontend
-- [ ] Automated tests for domain logic, validation, and aggregation
-- [ ] Structured logging
-- [ ] Health check endpoint
-
 ## Notes
 
 This project started as a CLI tool for learning Go fundamentals (structs, interfaces, file I/O) before evolving into this REST API. A GraphQL API was originally planned alongside REST for comparison purposes but was dropped in favor of focusing on backend fundamentals (auth, security, containerization).
