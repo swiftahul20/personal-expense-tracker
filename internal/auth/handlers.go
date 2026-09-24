@@ -71,9 +71,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, authResponse{AccessToken: token, User: created, RefreshToken: plainRefresh})
 }
 
-// Login godoc
-// @Summary      Log in
-// @Description  Authenticates a user and returns an access token and refresh token
 // @Tags         auth
 // @Accept       json
 // @Produce      json

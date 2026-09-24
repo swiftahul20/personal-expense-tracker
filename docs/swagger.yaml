@@ -128,7 +128,6 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticates a user and returns an access token and refresh token
       parameters:
       - description: Login credentials
         in: body
@@ -161,13 +160,10 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Log in
       tags:
       - auth
   /dashboard:
     get:
-      description: Returns expenses plus all three summaries combined in a single
-        response
       produces:
       - application/json
       responses:
@@ -187,7 +183,6 @@ paths:
       - Summary
   /expenses:
     get:
-      description: Returns a paginated list of the authenticated user's expenses
       parameters:
       - description: Page number (default 1)
         in: query
@@ -200,6 +195,18 @@ paths:
       - description: Filter by category
         in: query
         name: category
+        type: string
+      - description: Search by description (case-insensitive substring match)
+        in: query
+        name: search
+        type: string
+      - description: Filter from this date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter up to this date (YYYY-MM-DD)
+        in: query
+        name: to
         type: string
       produces:
       - application/json
@@ -221,7 +228,6 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates an expense for the authenticated user
       parameters:
       - description: Expense to create
         in: body
@@ -248,7 +254,6 @@ paths:
       - Expenses
   /expenses/{id}:
     delete:
-      description: Deletes an expense belonging to the authenticated user
       parameters:
       - description: Expense ID
         in: path
@@ -307,7 +312,6 @@ paths:
     put:
       consumes:
       - application/json
-      description: Partially updates an expense — only provided fields are changed
       parameters:
       - description: Expense ID
         in: path
@@ -343,9 +347,44 @@ paths:
       - BearerAuth: []
       tags:
       - Expenses
+  /expenses/export:
+    get:
+      parameters:
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Search by description (case-insensitive substring match)
+        in: query
+        name: search
+        type: string
+      - description: Filter from this date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter up to this date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      tags:
+      - Expenses
   /summary/category:
     get:
-      description: Returns totals grouped by category, including each group's expenses
       produces:
       - application/json
       responses:
@@ -367,7 +406,6 @@ paths:
       - Summary
   /summary/day:
     get:
-      description: Returns totals grouped by day, including each group's expenses
       produces:
       - application/json
       responses:
@@ -389,7 +427,6 @@ paths:
       - Summary
   /summary/month:
     get:
-      description: Returns totals grouped by month, including each group's expenses
       produces:
       - application/json
       responses:

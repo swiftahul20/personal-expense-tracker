@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -40,14 +41,15 @@ type HealthHandler struct {
 
 // =================================
 
-// ListExpenses godoc
-// @Description  Returns a paginated list of the authenticated user's expenses
 // @Tags         Expenses
 // @Produce      json
 // @Security     BearerAuth
 // @Param        page      query    int    false  "Page number (default 1)"
 // @Param        limit     query    int    false  "Items per page (default 20, max 100)"
 // @Param        category  query    string false  "Filter by category"
+// @Param        search    query    string false  "Search by description (case-insensitive substring match)"
+// @Param        from      query    string false  "Filter from this date (YYYY-MM-DD)"
+// @Param        to        query    string false  "Filter up to this date (YYYY-MM-DD)"
 // @Success      200 {object} paginatedExpensesResponse
 // @Failure      401 {object} map[string]string
 // @Router       /expenses [get]
@@ -57,33 +59,43 @@ func (h *Handler) ListExpenses(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
-	result, err := h.store.List(userID, expense.ListParams{Page: page, Limit: limit})
+	params := expense.ListParams{
+		Page:     page,
+		Limit:    limit,
+		Category: r.URL.Query().Get("category"),
+		Search:   r.URL.Query().Get("search"),
+	}
+
+	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
+		if from, err := time.Parse("2006-01-02", fromStr); err == nil {
+			params.From = &from
+		}
+	}
+	if toStr := r.URL.Query().Get("to"); toStr != "" {
+		if to, err := time.Parse("2006-01-02", toStr); err == nil {
+			to = to.Add(24*time.Hour - time.Nanosecond)
+			params.To = &to
+		}
+	}
+
+	result, err := h.store.List(userID, params)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	expenses := result.Expenses
-	if category := r.URL.Query().Get("category"); category != "" {
-		filtered := make([]expense.Expense, 0, len(expenses))
-		for _, e := range expenses {
-			if e.Category == category {
-				filtered = append(filtered, e)
-			}
-		}
-		expenses = filtered
-	}
-
+	page = params.Page
 	if page < 1 {
 		page = 1
 	}
+	limit = params.Limit
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
 	totalPages := (result.Total + limit - 1) / limit
 
 	writeJSON(w, http.StatusOK, paginatedExpensesResponse{
-		Expenses:   expenses,
+		Expenses:   result.Expenses,
 		Page:       page,
 		Limit:      limit,
 		Total:      result.Total,
@@ -131,7 +143,6 @@ func (h *Handler) GetExpense(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, e)
 }
 
-// @Description  Creates an expense for the authenticated user
 // @Tags         Expenses
 // @Accept       json
 // @Produce      json
@@ -158,7 +169,6 @@ func (h *Handler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
-// @Description  Partially updates an expense — only provided fields are changed
 // @Tags         Expenses
 // @Accept       json
 // @Produce      json
@@ -203,7 +213,6 @@ func (h *Handler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
-// @Description  Deletes an expense belonging to the authenticated user
 // @Tags         Expenses
 // @Security     BearerAuth
 // @Param        id path int true "Expense ID"
@@ -228,7 +237,6 @@ func (h *Handler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// @Description  Returns totals grouped by category, including each group's expenses
 // @Tags         Summary
 // @Produce      json
 // @Security     BearerAuth
@@ -245,7 +253,6 @@ func (h *Handler) SummaryByCategory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, report.ByCategory(expenses))
 }
 
-// @Description  Returns totals grouped by day, including each group's expenses
 // @Tags         Summary
 // @Produce      json
 // @Security     BearerAuth
@@ -262,7 +269,6 @@ func (h *Handler) SummaryByDay(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, report.ByDay(expenses))
 }
 
-// @Description  Returns totals grouped by month, including each group's expenses
 // @Tags         Summary
 // @Produce      json
 // @Security     BearerAuth
@@ -279,7 +285,6 @@ func (h *Handler) SummaryByMonth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, report.ByMonth(expenses))
 }
 
-// @Description  Returns expenses plus all three summaries combined in a single response
 // @Tags         Summary
 // @Produce      json
 // @Security     BearerAuth
@@ -324,4 +329,60 @@ func (h *HealthHandler) Check(w http.ResponseWriter, r *http.Request) {
 		"status":   "healthy",
 		"database": "connected",
 	})
+}
+
+// @Tags         Expenses
+// @Produce      text/csv
+// @Security     BearerAuth
+// @Param        category  query    string false  "Filter by category"
+// @Param        search    query    string false  "Search by description (case-insensitive substring match)"
+// @Param        from      query    string false  "Filter from this date (YYYY-MM-DD)"
+// @Param        to        query    string false  "Filter up to this date (YYYY-MM-DD)"
+// @Success      200 {file} file
+// @Failure      401 {object} map[string]string
+// @Router       /expenses/export [get]
+func (h *Handler) ExportExpenses(w http.ResponseWriter, r *http.Request) {
+	userID, _ := auth.UserIDFromContext(r.Context())
+
+	params := expense.ListParams{
+		Category: r.URL.Query().Get("category"),
+		Search:   r.URL.Query().Get("search"),
+	}
+
+	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
+		if from, err := time.Parse("2006-01-02", fromStr); err == nil {
+			params.From = &from
+		}
+	}
+	if toStr := r.URL.Query().Get("to"); toStr != "" {
+		if to, err := time.Parse("2006-01-02", toStr); err == nil {
+			to = to.Add(24*time.Hour - time.Nanosecond)
+			params.To = &to
+		}
+	}
+
+	expenses, err := h.store.ExportAll(userID, params)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=expenses.csv")
+
+	writer := csv.NewWriter(w)
+	writer.Write([]string{"ID", "Amount", "Category", "Sub-Category", "Description", "Date"})
+
+	for _, e := range expenses {
+		writer.Write([]string{
+			strconv.Itoa(e.ID),
+			strconv.FormatFloat(e.Amount, 'f', 2, 64),
+			e.Category,
+			e.SubCategory,
+			e.Description,
+			e.Date.Format("2006-01-02"),
+		})
+	}
+
+	writer.Flush()
 }

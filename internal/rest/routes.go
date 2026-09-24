@@ -32,6 +32,7 @@ func NewRouter(h *Handler, authHandler *auth.Handler, jwtManager *auth.JWTManage
 		r.Route("/expenses", func(r chi.Router) {
 			r.Get("/", h.ListExpenses)
 			r.Post("/", h.CreateExpense)
+			r.Get("/export", h.ExportExpenses)
 			r.Get("/{id}", h.GetExpense)
 			r.Put("/{id}", h.UpdateExpense)
 			r.Delete("/{id}", h.DeleteExpense)

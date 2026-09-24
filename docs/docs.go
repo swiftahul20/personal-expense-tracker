@@ -17,7 +17,6 @@ const docTemplate = `{
     "paths": {
         "/auth/login": {
             "post": {
-                "description": "Authenticates a user and returns an access token and refresh token",
                 "consumes": [
                     "application/json"
                 ],
@@ -27,7 +26,6 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Log in",
                 "parameters": [
                     {
                         "description": "Login credentials",
@@ -83,7 +81,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns expenses plus all three summaries combined in a single response",
                 "produces": [
                     "application/json"
                 ],
@@ -116,7 +113,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a paginated list of the authenticated user's expenses",
                 "produces": [
                     "application/json"
                 ],
@@ -140,6 +136,24 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by category",
                         "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by description (case-insensitive substring match)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter from this date (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter up to this date (YYYY-MM-DD)",
+                        "name": "to",
                         "in": "query"
                     }
                 ],
@@ -167,7 +181,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates an expense for the authenticated user",
                 "consumes": [
                     "application/json"
                 ],
@@ -197,6 +210,64 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/expenses/export": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Expenses"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by category",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by description (case-insensitive substring match)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter from this date (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter up to this date (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -262,7 +333,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates an expense — only provided fields are changed",
                 "consumes": [
                     "application/json"
                 ],
@@ -323,7 +393,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes an expense belonging to the authenticated user",
                 "tags": [
                     "Expenses"
                 ],
@@ -368,7 +437,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns totals grouped by category, including each group's expenses",
                 "produces": [
                     "application/json"
                 ],
@@ -404,7 +472,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns totals grouped by day, including each group's expenses",
                 "produces": [
                     "application/json"
                 ],
@@ -440,7 +507,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns totals grouped by month, including each group's expenses",
                 "produces": [
                     "application/json"
                 ],
