@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,7 +31,7 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Error("failed to load config:", "error", err)
+		log.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
@@ -40,24 +42,54 @@ func main() {
 		os.Exit(1)
 	}
 	if err := pool.Ping(ctx); err != nil {
-		log.Error("failed to ping database:", "error", err)
+		log.Error("failed to ping database", "error", err)
 		os.Exit(1)
 	}
 
 	expenseStore := expense.NewPostgresStore(pool)
 	userStore := user.NewPostgresStore(pool)
 	jwtManager := auth.NewJWTManager(cfg.JWTSecret, cfg.JWTTTL)
+	loginLimiter := ratelimit.New(5, 15*time.Minute)
+	healthHandler := rest.NewHealthHandler(pool)
 
 	expenseHandler := rest.NewHandler(expenseStore)
 	authHandler := auth.NewHandler(userStore, jwtManager, cfg.RefreshTTL)
 
-	loginLimiter := ratelimit.New(5, 15*time.Minute)
-	healthHandler := rest.NewHealthHandler(pool)
 	router := rest.NewRouter(expenseHandler, authHandler, jwtManager, loginLimiter, healthHandler, log)
 
-	log.Info("REST server listening on :8080")
-	if err := http.ListenAndServe(":8080", router); err != nil {
-		log.Error("server failed", "error", err)
-		os.Exit(1)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: router,
+	}
+
+	go func() {
+		log.Info("server starting", "port", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("server failed to start", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Info("shutdown signal received, draining connections")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Error("graceful shutdown failed", "error", err)
+	} else {
+		log.Info("server shut down cleanly")
+	}
+
+	pool.Close()
+	log.Info("database pool closed")
 }
