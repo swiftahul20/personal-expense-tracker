@@ -26,6 +26,7 @@ A REST API for tracking personal expenses, built in Go while learning the langua
 - **Config:** environment variables via `.env` ([godotenv](https://github.com/joho/godotenv))
 - **Containerization:** Docker, Docker Compose (multi-stage build)
 - **API Docs:** [swaggo/swag](https://github.com/swaggo/swag) (OpenAPI/Swagger generation)
+- **Deployment:** [Aiven](https://aiven.io) (managed PostgreSQL + API)
 
 ## Architecture
 
@@ -58,6 +59,8 @@ internal/
 
    ```
    DATABASE_URL=postgres://expense_user:expense_pass@postgres:5432/expense_tracker
+   # For a managed Postgres provider (e.g. Aiven), use the provided connection string with sslmode=require:
+   DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<database>?sslmode=require
    JWT_SECRET=<a long random string>
    JWT_TTL_HOURS=1
    REFRESH_TTL_DAYS=7
@@ -125,6 +128,19 @@ swag init -g cmd/rest-server/main.go
 docker compose down       # stop containers, keep data
 docker compose down -v    # stop containers and wipe the database volume
 ```
+
+### Live Deployment
+
+The API is deployed and publicly accessible:
+
+[API Health Check](https://01a0d77e-2ac4-781d-a870-26f4e9a39a72-8080.eur-1.aiven.app/health)
+
+- **Hosting:** [Aiven](https://aiven.io) (Docker-based web service, free tier)
+- **Database:** [Aiven](https://aiven.io) (managed PostgreSQL, free tier, requires `sslmode=require`)
+
+Note: Aiven's free tier spins down after 15 minutes of inactivity — the first request after idle time may take 10–30 seconds to respond while the service wakes up.
+
+Swagger docs for the live API: `https://01a0d77e-2ac4-781d-a870-26f4e9a39a72-8080.eur-1.aiven.app/swagger/index.html`
 
 ## API Reference
 

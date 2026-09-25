@@ -6,7 +6,7 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
+    "host": "https://01a0d77e-2ac4-781d-a870-26f4e9a39a72-8080.eur-1.aiven.app/",
     "basePath": "/",
     "paths": {
         "/auth/login": {

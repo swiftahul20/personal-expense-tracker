@@ -730,7 +730,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "https://01a0d77e-2ac4-781d-a870-26f4e9a39a72-8080.eur-1.aiven.app/",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Expense Tracker API",
