@@ -446,6 +446,8 @@ paths:
       - BearerAuth: []
       tags:
       - Summary
+schemes:
+- https
 securityDefinitions:
   BearerAuth:
     in: header

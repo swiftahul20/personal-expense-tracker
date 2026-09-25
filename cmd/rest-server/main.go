@@ -23,6 +23,7 @@ import (
 // @description     REST API for tracking personal expenses
 // @host            https://01a0d77e-2ac4-781d-a870-26f4e9a39a72-8080.eur-1.aiven.app/
 // @BasePath        /
+// @schemes         https
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
